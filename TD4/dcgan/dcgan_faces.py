@@ -6,7 +6,7 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import numpy as np
 from torch.utils.data import DataLoader
-from torchvision.datasets import ImageFolder
+from torchvision.datasets import CelebA
 import os
 
 # Set random seed for reproducibility
@@ -101,8 +101,8 @@ def weights_init(m):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
-def prepare_celeba_dataset(data_root='./data/celeba'):
-    """Prepare CelebA dataset"""
+def prepare_celeba_dataset(data_root='./data'):
+    """Prepare CelebA dataset using torchvision's built-in class"""
     transform = transforms.Compose([
         transforms.Resize(image_size),
         transforms.CenterCrop(image_size),
@@ -110,8 +110,22 @@ def prepare_celeba_dataset(data_root='./data/celeba'):
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
     
-    dataset = ImageFolder(root=data_root, transform=transform)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=2)
+    # Use torchvision's CelebA dataset
+    dataset = CelebA(
+        root=data_root,
+        split='train',  # Use training split
+        target_type='attr',  # We only need the images, not the attributes
+        transform=transform,
+        download=True  # Automatically download if not present
+    )
+    
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=2,
+        pin_memory=True
+    )
     
     return dataloader
 
@@ -215,17 +229,12 @@ def plot_losses(g_losses, d_losses):
     plt.close()
 
 if __name__ == "__main__":
-    # Check if dataset exists
-    if not os.path.exists('./data/celeba'):
-        print("Please download the CelebA dataset and place it in ./data/celeba")
-        print("Dataset should contain folders with images in the following structure:")
-        print("./data/celeba/img_align_celeba/")
-        exit()
-    
     # Prepare dataset
+    print("Preparing CelebA dataset...")
     dataloader = prepare_celeba_dataset()
     
     # Train DCGAN
+    print("Starting DCGAN training...")
     generator, discriminator, g_losses, d_losses = train_dcgan(dataloader)
     
     # Plot losses
